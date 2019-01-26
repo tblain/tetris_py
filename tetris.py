@@ -8,12 +8,6 @@ from math import hypot
 from pynput.keyboard import Key, Controller, Listener
 import copy
 
-root = Tk()
-canv = Canvas(root, highlightthickness=5)
-
-root.geometry('%sx%s+%s+%s' %(900, 1000, 100, 100))
-
-draw = True
 
 """
 board 10:20
@@ -22,98 +16,87 @@ board 10:20
 # Pieces def
 
 class Piece:
-    id = 0
-    name = ""
-    rot_num = 0
-    tetro = []
 
     def __init__(self):
         pass
 
 class PieceI(Piece):
-    id = 0
-    name = "I"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[0, 0, 0, 0, 0],
-                      [0, 0, 1, 0, 0],
-                      [0, 0, 1, 0, 0],
-                      [0, 0, 1, 0, 0],
-                      [0, 0, 1, 0, 0]])
 
     def __init__(self):
-        pass
+        self.id = 0
+        self.name = "I"
+        self.rot_num = 0
+        self.pos = np.array([3, -1])
+        self.tetro = np.array([[0, 0, 0, 0, 0],
+                               [0, 0, 1, 0, 0],
+                               [0, 0, 1, 0, 0],
+                               [0, 0, 1, 0, 0],
+                               [0, 0, 1, 0, 0]])
 
 class PieceJ(Piece):
-    id = 1
-    name = "J"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[1, 1, 0],
-                      [0, 1, 0],
-                      [0, 1, 0]])
 
     def __init__(self):
-        pass
+        self.id = 1
+        self.name = "J"
+        self.rot_num = 0
+        self.pos = np.array([3, 0])
+        self.tetro = np.array([[1, 1, 0],
+                               [0, 1, 0],
+                               [0, 1, 0]])
 
 class PieceL(Piece):
-    id = 2
-    name = "L"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[0, 1, 0],
-                      [0, 1, 0],
-                      [0, 1, 1]])
 
     def __init__(self):
-        pass
+        self.id = 2
+        self.name = "L"
+        self.rot_num = 0
+        self.pos = np.array([3, 0])
+        self.tetro = np.array([[0, 1, 0],
+                               [0, 1, 0],
+                               [0, 1, 1]])
 
 class PieceO(Piece):
-    id = 3
-    name = "O"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[1, 1],
-                      [1, 1]])
 
     def __init__(self):
-        pass
+        self.id = 3
+        self.name = "O"
+        self.rot_num = 0
+        self.pos = np.array([3, 0])
+        self.tetro = np.array([[1, 1],
+                              [1, 1]])
 
 class PieceS(Piece):
-    id = 4
-    name = "S"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[0, 1, 0],
-                      [1, 1, 0],
-                      [1, 0, 0]])
 
     def __init__(self):
-        pass
+        self.id = 4
+        self.name = "S"
+        self.rot_num = 0
+        self.pos = np.array([3, 0])
+        self.tetro = np.array([[0, 1, 0],
+                               [1, 1, 0],
+                               [1, 0, 0]])
 
 class PieceT(Piece):
-    id = 5
-    name = "T"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[0, 1, 0],
-                      [1, 1, 0],
-                      [0, 1, 0]])
 
     def __init__(self):
-        pass
+        self.id = 5
+        self.name = "T"
+        self.rot_num = 0
+        self.pos = np.array([3, 0])
+        self.tetro = np.array([[0, 1, 0],
+                               [1, 1, 0],
+                               [0, 1, 0]])
 
 class PieceZ(Piece):
-    id = 6
-    name = "Z"
-    rot_num = 0
-    pos = np.array([3, 1])
-    tetro = np.array([[1, 0, 0],
-                      [1, 1, 0],
-                      [0, 1, 0]])
 
     def __init__(self):
-        pass
+        self.id = 6
+        self.name = "Z"
+        self.rot_num = 0
+        self.pos = np.array([3, 0])
+        self.tetro = np.array([[1, 0, 0],
+                               [1, 1, 0],
+                               [0, 1, 0]])
 
 def rotate(piece, n=1):
     """
@@ -125,10 +108,10 @@ def rotate(piece, n=1):
     for i in range(0, l // 2):
         for j in range(i, l - i -1):
             temp = t[i][j]
-            t[i][j] = t[l - 1 - j][i];
-            t[l - 1 - j][i] = t[l - 1 - i][l - 1 - j];
-            t[l - 1 - i][l - 1 - j] = t[j][l - 1 - i];
-            t[j][l - 1 - i] = temp;
+            t[i,j] = t[l - 1 - j,i];
+            t[l - 1 - j,i] = t[l - 1 - i,l - 1 - j];
+            t[l - 1 - i,l - 1 - j] = t[j,l - 1 - i];
+            t[j,l - 1 - i] = temp;
 
     if overlap(piece, board) or outside(piece, [0, 0]):
        piece.tetro = copy_t
@@ -150,18 +133,38 @@ def get_value(piece, x, y):
 
     if px <= x <= px + l -1 and py <= y <= py + l -1:
 #        print(t[x-px][y-py])
-        return t[x-px][y-py]
+        return t[x-px,y-py]
     else:
         return 0
 
-def draw(board, piece):
+def get_board_plus_piece(board, piece):
+    board_plus_piece = np.zeros([10, 20])
+
     for i in range(0, 10):
         for j in range(0, 20):
             if board[i, j] == 1 or get_value(piece, i, j) == 1:
-                frame = Frame(root, width=40, height=40, background="black")
+                board_plus_piece[i,j] = 1
+
+    return board_plus_piece
+
+def draw(board, board_draw):
+    for i in range(0, 10):
+        for j in range(0, 20):
+            if board[i, j] == 1:
+                board_draw[i, j].configure(background="black")
             else:
-                frame = Frame(root, width=40, height=40, background="white")
+                board_draw[i, j].configure(background="white")
+
+def clean_board_draw():
+    board_draw = np.empty([10, 20], dtype=object)
+
+    for i in range(0, 10):
+        for j in range(0, 20):
+            frame = Frame(root, width=40, height=40, background="white")
             frame.grid(row=j, column=i)
+            board_draw[i,j] = frame
+
+    return board_draw
 
 def outside(piece, dirvec):
     p = piece
@@ -172,8 +175,7 @@ def outside(piece, dirvec):
 
     for i in range(0, l):
         for j in range(0, l):
-            if t[i][j] == 1 and (px+i > 10 or px+i < 0 or py+j >=  20 or py+j < 0):
-                print("outside")
+            if t[i,j] == 1 and (px+i >= 10 or px+i < 0 or py+j >=  20 or py+j < 0):
                 return True
     return False
 
@@ -205,14 +207,10 @@ def move(dir, piece):
             piece.pos += np.array([0, 1])
 #            print("pos0 ", piece.pos[0], "pos1 ", piece.pos[1])
     elif dir == "right":
-        if overlap(piece, board, "right"):
-            piece, board = push_on(piece, board)
-        elif not outside(copy.copy(piece), [1, 0]):
+        if not overlap(piece, board, "right") and not outside(copy.copy(piece), [1, 0]):
             piece.pos += np.array([1,0])
     elif dir == "left":
-        if overlap(piece, board, "left"):
-            piece, board = push_on(piece, board)
-        elif not outside(copy.copy(piece), [-1, 0]):
+        if not overlap(piece, board, "left") and not outside(copy.copy(piece), [-1, 0]):
             piece.pos += np.array([-1,0])
 
     return piece
@@ -223,10 +221,10 @@ def overlap(piece, board, action=None):
     l = len(t)
     dirvec = [0, 0]
     px = p.pos[0]
-    py = p.pos[1] + 1
+    py = p.pos[1]
 
     if action == "down":
-        py == 1
+        py += 1
         dirvec = [0, 1]
 
     if action == "right":
@@ -238,12 +236,29 @@ def overlap(piece, board, action=None):
         dirvec = [-1, 0]
 
     if not outside(piece, dirvec):
-        for i in range(0, l-1):
-            for j in range(0, l-1):
+        for i in range(0, l):
+            for j in range(0, l):
                 if t[i][j] == 1 and board[px+i][py+j] == 1:
                     print("overlap")
                     return True
     return False
+
+def remove_full_lines(board):
+    lines_removed = 0
+
+    for j in range(0, 20):
+        full = True
+        for i in range(0, 10):
+            if board[i, j] == 0:
+                full = False
+
+        if full:
+            print("column ", i, " is full ")
+            for y in range(j, 1, -1):
+                for x in range(0, 10-1):
+                    board[x, y] = board[x, y-1]
+
+    return board
 
 def push_on(piece, board):
     p = piece
@@ -256,8 +271,27 @@ def push_on(piece, board):
         for j in range(0, l):
             if t[i][j] == 1:
                 board[px+i][py+j] = 1
-    print("fin push on")
-    return rand_piece(), board
+
+    return rand_piece(), remove_full_lines(board)
+
+def direct_pose(piece, board):
+    p = piece
+    t = p.tetro
+    l = len(t)
+    px = p.pos[0]
+    py = p.pos[1]
+
+    while not overlap(piece, board, "down") and not outside(piece, [0, 1]):
+        piece.pos[1] += 1
+
+    return push_on(piece, board)
+
+def game_over(board):
+    for i in range(0, 10):
+        if board[i, 0]:
+            return True
+
+    return False
 
 def on_press(key):
     pass
@@ -268,6 +302,7 @@ def on_release(key):
     # print('{0}'.format(key))
     # print(key)
     # print(piece)
+
     if key == Key.down:
         piece = move("down", piece)
         return False
@@ -278,11 +313,10 @@ def on_release(key):
         piece = move("left", piece)
         return False
     elif key == Key.up:
-        piece = rotate(piece, 1)
+        piece = rotate(piece, 3)
         return False
     elif key == Key.space:
-        piece, board = push_on(piece, board)
-        print(board)
+        piece, board = direct_pose(piece, board)
         return False
 
     if key == Key.esc:
@@ -291,10 +325,19 @@ def on_release(key):
         return False
 
 # board = np.random.randint(0, 2, size=(20, 10))
+
+draw_enable = True
+
+if draw_enable:
+    root = Tk()
+    canv = Canvas(root, highlightthickness=5)
+    root.geometry('%sx%s+%s+%s' %(900, 1000, 100, 100))
+    board_draw = clean_board_draw()
+
 board = np.zeros((10, 20))
 keyboard = Controller()
 finish = False
-#df = pd.DataFrame(columns=['Names', 'Births'])
+df = pd.DataFrame(columns=['Names', 'Births'])
 
 piece = rand_piece()
 
@@ -302,9 +345,20 @@ while not finish:
     with Listener(
         on_press=on_press,
         on_release=on_release) as listener: listener.join()
-    print(board)
-    if draw:
-        draw(board, piece)
-    canv.update()
+    if game_over(board):
+        finish = True
+        print("GAME OVER")
+        print("GAME OVER")
+        print("GAME OVER")
+        print("GAME OVER")
+        print("GAME OVER")
+        print("GAME OVER")
+        print("GAME OVER")
+    board_plus_piece = get_board_plus_piece(board, piece)
+    # print(board_plus_piece)
+    if draw_enable:
+        draw(board_plus_piece, board_draw)
+        canv.update()
 
-root.mainloop()
+if draw_enable:
+    root.mainloop()
