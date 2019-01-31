@@ -351,6 +351,7 @@ while not finish:
         print("GAME OVER")
         print("GAME OVER")
         print("GAME OVER")
+        k j'ai 
         print("GAME OVER")
         print("GAME OVER")
         print("GAME OVER")
