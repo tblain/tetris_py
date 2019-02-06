@@ -4,6 +4,10 @@ import numpy as np
 import math
 import random
 import pandas as pd
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+import tensorflow
 from math import hypot
 from pynput.keyboard import Key, Controller, Listener
 import copy
@@ -326,7 +330,7 @@ def on_release(key):
 
 # board = np.random.randint(0, 2, size=(20, 10))
 
-draw_enable = True
+draw_enable = False
 
 if draw_enable:
     root = Tk()
@@ -337,9 +341,20 @@ if draw_enable:
 board = np.zeros((10, 20))
 keyboard = Controller()
 finish = False
-df = pd.DataFrame(columns=['Names', 'Births'])
 
 piece = rand_piece()
+
+
+model = Sequential()
+
+model.add(Dense(units=64, activation='relu', input_dim=1))
+model.add(Dense(units=4, activation='softmax'))
+
+classes = model.predict_on_batch(np.array([1, 2]))
+c = classes[0]
+for c in classes:
+    for a in c:
+        print(a)
 
 while not finish:
     with Listener(
@@ -351,7 +366,6 @@ while not finish:
         print("GAME OVER")
         print("GAME OVER")
         print("GAME OVER")
-        k j'ai 
         print("GAME OVER")
         print("GAME OVER")
         print("GAME OVER")
