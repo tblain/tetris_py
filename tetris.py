@@ -112,10 +112,15 @@ def rotate(piece, n=1):
     for i in range(0, l // 2):
         for j in range(i, l - i -1):
             temp = t[i][j]
-            t[i,j] = t[l - 1 - j,i];
-            t[l - 1 - j,i] = t[l - 1 - i,l - 1 - j];
-            t[l - 1 - i,l - 1 - j] = t[j,l - 1 - i];
-            t[j,l - 1 - i] = temp;
+            t[i,j] = t[l - 1 - j,i]
+            t[l - 1 - j,i] = t[l - 1 - i,l - 1 - j]
+            t[l - 1 - i,l - 1 - j] = t[j,l - 1 - i]
+            t[j,l - 1 - i] = temp
+
+    piece.rot_num += 1
+    if piece.rotate == 3:
+        piece.rot_num = 0
+
 
     if overlap(piece, board) or outside(piece, [0, 0]):
        piece.tetro = copy_t
@@ -330,7 +335,9 @@ def on_release(key):
 
 # board = np.random.randint(0, 2, size=(20, 10))
 
-draw_enable = False
+draw_enable = True
+human = False
+finish = False
 
 if draw_enable:
     root = Tk()
@@ -340,26 +347,48 @@ if draw_enable:
 
 board = np.zeros((10, 20))
 keyboard = Controller()
-finish = False
 
 piece = rand_piece()
 
 
 model = Sequential()
 
-model.add(Dense(units=64, activation='relu', input_dim=1))
-model.add(Dense(units=4, activation='softmax'))
+model.add(Dense(units=20, activation='relu', input_dim=1))
+model.add(Dense(units=5, activation='softmax'))
 
-classes = model.predict_on_batch(np.array([1, 2]))
-c = classes[0]
-for c in classes:
-    for a in c:
-        print(a)
+def ia_move(piece, board):
+    data = board.flatten()
+    prediction  = model.predict_classes(data)
+
+    choice = np.argmax(prediction)
+    print("prediction", prediction)
+    print("choice: ", choice)
+
+    if choice == 0:
+        return move("down", piece), board
+    elif choice == 1:
+        return move("right", piece), board
+    elif choice == 2:
+        return move("left", piece), board
+    elif choice == 3:
+        return rotate(piece, 3, board)
+    elif choice == 4:
+        return direct_pose(piece, board)
+
 
 while not finish:
-    with Listener(
-        on_press=on_press,
-        on_release=on_release) as listener: listener.join()
+    if human:
+        with Listener(
+            on_press=on_press,
+            on_release=on_release) as listener: listener.join()
+    else:
+        piece, board = ia_move(piece, board)
+        #print(model.get_layer(index=0).get_weights())
+        weights = model.get_layer(index=0).get_weights()
+        #print("weights", weights[0], "\n")
+        print("-----------")
+        #model.get_layer(index=0).set_weights([weights[0]+np.random.rand(20,1)-0.5, weights[1]])
+
     if game_over(board):
         finish = True
         print("GAME OVER")
@@ -374,6 +403,7 @@ while not finish:
     if draw_enable:
         draw(board_plus_piece, board_draw)
         canv.update()
+        time.sleep(0.01)
 
 if draw_enable:
     root.mainloop()
