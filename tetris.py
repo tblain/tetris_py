@@ -102,7 +102,7 @@ class PieceZ(Piece):
                                [1, 1, 0],
                                [0, 1, 0]])
 
-def rotate(piece, n=1):
+def rotate(piece, board, n=1):
     """
     rotate the tetro matrice
     """
@@ -127,7 +127,7 @@ def rotate(piece, n=1):
        return piece
 
     if n > 1:
-        return rotate(piece, n-1)
+        return rotate(piece, board, n-1)
 
     return piece
 
@@ -190,8 +190,7 @@ def outside(piece, dirvec):
 
 def rand_piece():
     n = random.randint(0, 6)
-    print("rand n: ", n)
-
+    #print("rand n: ", n)
     if n == 0:
         return PieceI()
     elif n == 1:
@@ -207,8 +206,7 @@ def rand_piece():
     elif n == 6:
         return PieceZ()
 
-def move(dir, piece):
-    global board
+def move(dir, piece, board):
     if dir == "down":
         if outside(copy.copy(piece), [0, 1]) or overlap(piece, board, "down"):
             piece, board = push_on(piece, board)
@@ -247,12 +245,13 @@ def overlap(piece, board, action=None):
     if not outside(piece, dirvec):
         for i in range(0, l):
             for j in range(0, l):
+                print
                 if t[i][j] == 1 and board[px+i][py+j] == 1:
-                    print("overlap")
                     return True
     return False
 
 def remove_full_lines(board):
+    global score
     lines_removed = 0
 
     for j in range(0, 20):
@@ -263,6 +262,7 @@ def remove_full_lines(board):
 
         if full:
             print("column ", i, " is full ")
+            score += 100
             for y in range(j, 1, -1):
                 for x in range(0, 10-1):
                     board[x, y] = board[x, y-1]
@@ -270,6 +270,8 @@ def remove_full_lines(board):
     return board
 
 def push_on(piece, board):
+    global score
+    score += 10
     p = piece
     t = p.tetro
     l = len(t)
@@ -333,37 +335,19 @@ def on_release(key):
         print("exit")
         return False
 
-# board = np.random.randint(0, 2, size=(20, 10))
+def gen_NN(genes=None):
+    inputs = Input(shape=(20,10))
+    x = Flatten()(inputs)
+    x = Dense(10, activation='relu')(x)
+    x = Dense(10, activation='relu')(x)
+    x = Dense(10, activation='relu')(x)
+    predictions = Dense(5, activation='softmax')(x)
 
-draw_enable = True
-human = False
-finish = False
+    model = Model(inputs=inputs, outputs=predictions)
 
-if draw_enable:
-    root = Tk()
-    canv = Canvas(root, highlightthickness=5)
-    root.geometry('%sx%s+%s+%s' %(900, 1000, 100, 100))
-    board_draw = clean_board_draw()
+    return model
 
-board = np.zeros((10, 20))
-keyboard = Controller()
-
-piece = rand_piece()
-
-# This returns a tensor
-inputs = Input(shape=(20,10))
-
-# a layer instance is callable on a tensor, and returns a tensor
-layer1 = Dense(64, activation='relu')(inputs)
-layer2 = Dense(64, activation='relu')(layer1)
-layer3 = Flatten()(layer2)
-predictions = Dense(5, activation='softmax')(layer3)
-
-# This creates a model that includes
-# the Input layer and three Dense layers
-model = Model(inputs=inputs, outputs=predictions)
-
-def ia_move(piece, board):
+def ia_move(model, piece, board):
     data = board
     data = data.reshape((1, 20, 10))
     #df = pd.DataFrame(data)
@@ -376,47 +360,77 @@ def ia_move(piece, board):
     #print("choice: ", choice)
 
     if choice == 0:
-        return move("down", piece), board
+        return move("down", piece, board), board
     elif choice == 1:
-        return move("right", piece), board
+        return move("right", piece, board), board
     elif choice == 2:
-        return move("left", piece), board
+        return move("left", piece, board), board
     elif choice == 3:
-        return rotate(piece, 3), board
+        return rotate(piece, board, 3), board
     elif choice == 4:
         return direct_pose(piece, board)
 
 
-while not finish:
-    if human:
-        with Listener(
-            on_press=on_press,
-            on_release=on_release) as listener: listener.join()
-    else:
-        piece, board = ia_move(piece, board)
-        #print(model.get_layer(index=0).get_weights())
-        weights = model.get_layer(index=0).get_weights()
-        #weights = layer1.get_weights()
+def game_run(model, draw_enable=False, human=False):
+    global score
+    global board_draw
+    score = 0
+    nb_move = 0
+    finish = False
+    board = np.zeros((10, 20))
+    keyboard = Controller()
+    piece = rand_piece()
 
-        print("weights", weights)
-        print("-----------")
-        #model.get_layer(index=0).set_weights([weights[0]+np.random.rand(20,1)-0.5, weights[1]])
+    while not finish:
+        if human:
+            with Listener(
+                on_press=on_press,
+                on_release=on_release) as listener: listener.join()
+        else:
+            piece, board = ia_move(model, piece, board)
+            weights = np.array(model.get_weights())
+            new_weights = []
+            for weight in weights:
+                #print("shape : ", weight.shape)
+                #print("weight ", weight)
+                if len(weight.shape) > 1:
+                    new_weights.append(np.array(weight) + np.random.rand(weight.shape[0], weight.shape[1]))
+                else:
+                    new_weights.append(weight)
 
-    if game_over(board):
-        finish = True
-        print("GAME OVER")
-        print("GAME OVER")
-        print("GAME OVER")
-        print("GAME OVER")
-        print("GAME OVER")
-        print("GAME OVER")
-        print("GAME OVER")
-    board_plus_piece = get_board_plus_piece(board, piece)
-    # print(board_plus_piece)
-    if draw_enable:
-        draw(board_plus_piece, board_draw)
-        canv.update()
-        time.sleep(0.01)
+            model.set_weights(new_weights)
+            nb_move += 1
+
+        if game_over(board) or nb_move > 100:
+            finish = True
+            print("GAME OVER")
+        board_plus_piece = get_board_plus_piece(board, piece)
+        # print(board_plus_piece)
+        if draw_enable:
+            draw(board_plus_piece, board_draw)
+            canv.update()
+            time.sleep(0.05)
+
+    print("score ", score)
+
+score = 0
+draw_enable = False
+
+if draw_enable:
+    root = Tk()
+    canv = Canvas(root, highlightthickness=5)
+    root.geometry('%sx%s+%s+%s' %(900, 1000, 100, 100))
+    board_draw = clean_board_draw()
+
+
+list_bot = []
+print("gen bots")
+for i in range(0, 100):
+    list_bot.append(gen_NN())
+
+print("game run")
+for bot in list_bot:
+    game_run(bot)
 
 if draw_enable:
     root.mainloop()
