@@ -347,6 +347,11 @@ def gen_NN(genes=None):
 
     return model
 
+class Bot:
+    def __init__(self, genes=None):
+        self.model = gen_NN(genes)
+        self.fitness = 0
+
 def ia_move(model, piece, board):
     data = board
     data = data.reshape((1, 20, 10))
@@ -371,7 +376,7 @@ def ia_move(model, piece, board):
         return direct_pose(piece, board)
 
 
-def game_run(model, draw_enable=False, human=False):
+def game_run(bot, draw_enable=False, human=False):
     global score
     global board_draw
     score = 0
@@ -380,6 +385,7 @@ def game_run(model, draw_enable=False, human=False):
     board = np.zeros((10, 20))
     keyboard = Controller()
     piece = rand_piece()
+    model = bot.model
 
     while not finish:
         if human:
@@ -403,7 +409,7 @@ def game_run(model, draw_enable=False, human=False):
 
         if game_over(board) or nb_move > 100:
             finish = True
-            print("GAME OVER")
+            #print("GAME OVER")
         board_plus_piece = get_board_plus_piece(board, piece)
         # print(board_plus_piece)
         if draw_enable:
@@ -411,7 +417,10 @@ def game_run(model, draw_enable=False, human=False):
             canv.update()
             time.sleep(0.05)
 
-    print("score ", score)
+    #print("score ", score)
+    fitness = score
+    bot.fitness = fitness
+
 
 score = 0
 draw_enable = False
@@ -424,13 +433,30 @@ if draw_enable:
 
 
 list_bot = []
+
 print("gen bots")
-for i in range(0, 100):
-    list_bot.append(gen_NN())
+# generation des bots
+for i in range(0, 20):
+    list_bot.append(Bot())
 
 print("game run")
+i = 0
+# calcul des fintess
 for bot in list_bot:
     game_run(bot)
+    i += 1
+    print(i/len(list_bot) * 100)
 
+# triage des bots par ordre de fintess
+list_bot.sort(key=lambda x: x.fitness, reverse=True)
+new_list_bot = []
+
+# selection des 10 meilleurs bots
+for i in range(0, 10):
+    new_list_bot.append(list_bot[i])
+
+list_bot = new_list_bot
+for bot in list_bot:
+    print(bot.fitness)
 if draw_enable:
     root.mainloop()
