@@ -20,7 +20,6 @@ board 10:20
 # Pieces def
 
 class Piece:
-
     def __init__(self):
         pass
 
@@ -335,7 +334,7 @@ def on_release(key):
         print("exit")
         return False
 
-def gen_NN(genes=None):
+def gen_NN(genes=[]):
     inputs = Input(shape=(20,10))
     x = Flatten()(inputs)
     x = Dense(10, activation='relu')(x)
@@ -345,10 +344,13 @@ def gen_NN(genes=None):
 
     model = Model(inputs=inputs, outputs=predictions)
 
+    if len(genes) > 0:
+        model.set_weights(genes)
+
     return model
 
 class Bot:
-    def __init__(self, genes=None):
+    def __init__(self, genes=[]):
         self.model = gen_NN(genes)
         self.fitness = 0
 
@@ -421,6 +423,45 @@ def game_run(bot, draw_enable=False, human=False):
     fitness = score
     bot.fitness = fitness
 
+def croisement(b1, b2, nb_enfants):
+    """
+    b1.fitness > b2.fitness
+    renvoie le croisement entre les poids des 2 parents
+    c'est a dire 2 enfants avec des poids qui seront un mixte des parents
+    """
+
+    bw1 = b1.model.get_weights()
+    bw2 = b2.model.get_weights()
+
+    list_enfants = []
+    list_p = []
+
+    for i in range(0, nb_enfants):
+        # poids des deux enfants qu'on initialise avec les poids des parents
+        list_enfants.append(b1.model.get_weights())
+        # nombre aleatoire compris entre - 0.5 et 1.5 utiliser pour faire le croisement
+        list_p.append(random.uniform(-0.5, 1.5))
+
+
+    # on parcourt les couches des parents en simultanne
+
+    for k in range(0, len(bw1)):
+        lbw1 = bw1[k]
+        lbw2 = bw2[k]
+        if len(lbw1.shape) > 1: # on skip les couches qui qui n'ont pas de poids
+            nb_col = lbw1.shape[0]
+            nb_row = lbw2.shape[1]
+
+            # on update les poids de la couche
+            for i in range(0, nb_col):
+                for j in range(0, nb_row):
+                    for e in range(0, len(list_enfants)):
+                        p = list_p[e]
+                        list_enfants[e][k][i, j] = p * lbw1[i, j] + (1-p) * lbw2[i, j]
+
+    #print("model 1: ", w1)
+
+    return list_enfants
 
 score = 0
 draw_enable = False
@@ -432,31 +473,46 @@ if draw_enable:
     board_draw = clean_board_draw()
 
 
+
 list_bot = []
 
-print("gen bots")
-# generation des bots
-for i in range(0, 20):
+# generation de la pop de depart
+print("gen bots de depart")
+for i in range(0, 10):
     list_bot.append(Bot())
 
-print("game run")
-i = 0
-# calcul des fintess
-for bot in list_bot:
-    game_run(bot)
-    i += 1
-    print(i/len(list_bot) * 100)
+for i in range(0, 40):
 
-# triage des bots par ordre de fintess
-list_bot.sort(key=lambda x: x.fitness, reverse=True)
-new_list_bot = []
+    print("game run, nb bots:", len(list_bot))
+    i = 0
+    # calcul des fintess
+    for bot in list_bot:
+        game_run(bot)
+        i += 1
+        print(i/len(list_bot) * 100)
 
-# selection des 10 meilleurs bots
-for i in range(0, 10):
-    new_list_bot.append(list_bot[i])
+    # triage des bots par ordre de fintess
+    list_bot.sort(key=lambda x: x.fitness, reverse=True)
+    new_list_bot = []
 
-list_bot = new_list_bot
-for bot in list_bot:
-    print(bot.fitness)
+    list_fitness = []
+    # selection des 10 meilleurs bots
+    for i in range(0, 10):
+        new_list_bot.append(list_bot[i])
+        list_fitness.append(list_bot[i].fitness)
+
+    print("resultat des boss: ", list_fitness)
+
+    list_bot = []
+
+    print("croisement")
+    for i in range(0, len(new_list_bot) - 1):
+        b1 = new_list_bot[i]
+        b2 = new_list_bot[i+1]
+
+        list_enfants = croisement(b1, b2, (i+1) * 2)
+        for enfant in list_enfants:
+            list_bot.append(Bot(enfant))
+
 if draw_enable:
     root.mainloop()
