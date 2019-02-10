@@ -1,17 +1,26 @@
 from tkinter import *
+import gc
 import time
 import numpy as np
 import math
+from math import hypot
 import random
 import pandas as pd
+from tqdm import tqdm
 import keras
 from keras.models import Model
 from keras.layers import Dense, Input, Flatten
+import keras.backend as K
 import tensorflow
-from math import hypot
 from pynput.keyboard import Key, Controller, Listener
 import copy
+from multiprocessing.dummy import Pool as ThreadPool
+from concurrent.futures import ThreadPoolExecutor
+from tensorflow.python.client import device_lib
 
+import os
+# desactivate un message de le cli
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 """
 board 10:20
@@ -101,35 +110,6 @@ class PieceZ(Piece):
                                [1, 1, 0],
                                [0, 1, 0]])
 
-def rotate(piece, board, n=1):
-    """
-    rotate the tetro matrice
-    """
-    t = piece.tetro
-    copy_t = copy.copy(t)
-    l = len(t)
-    for i in range(0, l // 2):
-        for j in range(i, l - i -1):
-            temp = t[i][j]
-            t[i,j] = t[l - 1 - j,i]
-            t[l - 1 - j,i] = t[l - 1 - i,l - 1 - j]
-            t[l - 1 - i,l - 1 - j] = t[j,l - 1 - i]
-            t[j,l - 1 - i] = temp
-
-    piece.rot_num += 1
-    if piece.rot_num == 3:
-        piece.rot_num = 0
-
-
-    if overlap(piece, board) or outside(piece, [0, 0]):
-       piece.tetro = copy_t
-       return piece
-
-    if n > 1:
-        return rotate(piece, board, n-1)
-
-    return piece
-
 def get_value(piece, x, y):
     p = piece
     t = p.tetro
@@ -174,19 +154,6 @@ def clean_board_draw():
 
     return board_draw
 
-def outside(piece, dirvec):
-    p = piece
-    t = p.tetro
-    l = len(t)
-    px = p.pos[0] + dirvec[0]
-    py = p.pos[1] + dirvec[1]
-
-    for i in range(0, l):
-        for j in range(0, l):
-            if t[i,j] == 1 and (px+i >= 10 or px+i < 0 or py+j >=  20 or py+j < 0):
-                return True
-    return False
-
 def rand_piece():
     n = random.randint(0, 6)
     #print("rand n: ", n)
@@ -205,96 +172,7 @@ def rand_piece():
     elif n == 6:
         return PieceZ()
 
-def move(dir, piece, board):
-    if dir == "down":
-        if outside(copy.copy(piece), [0, 1]) or overlap(piece, board, "down"):
-            piece, board = push_on(piece, board)
-        else:
-            piece.pos += np.array([0, 1])
-#            print("pos0 ", piece.pos[0], "pos1 ", piece.pos[1])
-    elif dir == "right":
-        if not overlap(piece, board, "right") and not outside(copy.copy(piece), [1, 0]):
-            piece.pos += np.array([1,0])
-    elif dir == "left":
-        if not overlap(piece, board, "left") and not outside(copy.copy(piece), [-1, 0]):
-            piece.pos += np.array([-1,0])
-
     return piece
-
-def overlap(piece, board, action=None):
-    p = piece
-    t = p.tetro
-    l = len(t)
-    dirvec = [0, 0]
-    px = p.pos[0]
-    py = p.pos[1]
-
-    if action == "down":
-        py += 1
-        dirvec = [0, 1]
-
-    if action == "right":
-        px += 1
-        dirvec = [1, 0]
-
-    if action == "left":
-        px -= 1
-        dirvec = [-1, 0]
-
-    if not outside(piece, dirvec):
-        for i in range(0, l):
-            for j in range(0, l):
-                print
-                if t[i][j] == 1 and board[px+i][py+j] == 1:
-                    return True
-    return False
-
-def remove_full_lines(board):
-    global score
-    lines_removed = 0
-
-    for j in range(0, 20):
-        full = True
-        for i in range(0, 10):
-            if board[i, j] == 0:
-                full = False
-
-        if full:
-            print("column ", i, " is full ")
-            score += 100
-            for y in range(j, 1, -1):
-                for x in range(0, 10-1):
-                    board[x, y] = board[x, y-1]
-
-    return board
-
-def push_on(piece, board):
-    global score
-    score += 10
-    p = piece
-    t = p.tetro
-    l = len(t)
-    px = p.pos[0]
-    py = p.pos[1]
-
-    for i in range(0, l):
-        for j in range(0, l):
-            if t[i][j] == 1:
-                board[px+i][py+j] = 1
-
-    return rand_piece(), remove_full_lines(board)
-
-def direct_pose(piece, board):
-    p = piece
-    t = p.tetro
-    l = len(t)
-    px = p.pos[0]
-    py = p.pos[1]
-
-    while not overlap(piece, board, "down") and not outside(piece, [0, 1]):
-        piece.pos[1] += 1
-
-    return push_on(piece, board)
 
 def game_over(board):
     for i in range(0, 10):
@@ -335,17 +213,18 @@ def on_release(key):
         return False
 
 def gen_NN(genes=[]):
-    inputs = Input(shape=(20,10))
-    x = Flatten()(inputs)
-    x = Dense(10, activation='relu')(x)
-    x = Dense(10, activation='relu')(x)
-    x = Dense(10, activation='relu')(x)
-    predictions = Dense(5, activation='softmax')(x)
+    inputs = Input(shape=(202,))
+    #x = Flatten()(inputs)
+    x = Dense(10, activation='relu')(inputs)
+    x = Dense(60, activation='relu')(x)
+    x = Dense(60, activation='relu')(x)
+    predictions = Dense(4, activation='softmax')(x)
 
     model = Model(inputs=inputs, outputs=predictions)
 
     if len(genes) > 0:
         model.set_weights(genes)
+    model._make_predict_function()
 
     return model
 
@@ -353,41 +232,181 @@ class Bot:
     def __init__(self, genes=[]):
         self.model = gen_NN(genes)
         self.fitness = 0
+        self.score = 0
+        self.penalite = 0
 
-def ia_move(model, piece, board):
-    data = board
-    data = data.reshape((1, 20, 10))
-    #df = pd.DataFrame(data)
-    #print("dataframe : ", df)
-    #print(" rand : ", np.random.rand(200))
-    prediction = model.predict(data, batch_size=1)
+    def play(self): # joue un coup
+        data = self.board.reshape((1, 200))
+        piece_input = np.array([self.piece.id, self.piece.rot_num]).reshape((1, 2))
+        data = np.hstack((data, piece_input))
+        #df = pd.DataFrame(data)
+        #print("dataframe : ", df)
+        #print(" rand : ", np.random.rand(200))
+        #with tensorflow.Session(graph=tensorflow.Graph()) as sess:
+        #    K.set_session(sess)
+        prediction = self.model.predict_on_batch(data)
 
-    choice = np.argmax(prediction)
-    #print("prediction", prediction)
-    #print("choice: ", choice)
+        choice = np.argmax(prediction)
+        #print("prediction", prediction)
+        #print("choice: ", choice)
 
-    if choice == 0:
-        return move("down", piece, board), board
-    elif choice == 1:
-        return move("right", piece, board), board
-    elif choice == 2:
-        return move("left", piece, board), board
-    elif choice == 3:
-        return rotate(piece, board, 3), board
-    elif choice == 4:
-        return direct_pose(piece, board)
+        if choice == 0:
+            self.move("left")
+        elif choice == 1:
+            self.move("right")
+        elif choice == 2:
+            self.direct_pose()
+        elif choice == 3:
+            self.rotate(3)
+        elif choice == 4:
+            self.move("down")
+
+    def move(self, dir): # deplace la piece dans la direction indique
+        if dir == "down":
+            if self.outside([0, 1]) or self.overlap("down"):
+                self.push_on_board()
+            else:
+                self.piece.pos += np.array([0, 1])
+        elif dir == "right":
+            self.penalite = 0
+            if not self.overlap("right") and not self.outside([1, 0]):
+                self.piece.pos += np.array([1,0])
+        elif dir == "left":
+            self.penalite = 0
+            if not self.overlap("left") and not self.outside([-1, 0]):
+                self.piece.pos += np.array([-1,0])
+
+    def direct_pose(self):
+        self.penalite = 9
+        l = len(self.piece.tetro)
+        px = self.piece.pos[0]
+        py = self.piece.pos[1]
+
+        while not self.overlap("down") and not self.outside([0, 1]):
+            self.piece.pos[1] += 1
+
+        self.push_on()
+
+    def rotate(self, n=1):
+        """
+        rotate the tetro matrice
+        """
+        t = copy.copy(self.piece.tetro)
+        l = len(t)
+        for i in range(0, l // 2):
+            for j in range(i, l - i -1):
+                temp = t[i][j]
+                t[i,j] = t[l - 1 - j,i]
+                t[l - 1 - j,i] = t[l - 1 - i,l - 1 - j]
+                t[l - 1 - i,l - 1 - j] = t[j,l - 1 - i]
+                t[j,l - 1 - i] = temp
+
+        self.piece.rot_num += 1
+        if self.piece.rot_num == 3:
+            self.piece.rot_num = 0
 
 
-def game_run(bot, draw_enable=False, human=False):
-    global score
-    global board_draw
+        if self.overlap() or self.outside([0, 0]):
+           self.piece.tetro = t
+
+        if n > 1:
+            self.rotate(n-1)
+
+    def push_on(self): # met la piece definitivement dans le board
+        self.score += 10 - self.penalite
+        l = len(self.piece.tetro)
+        px = self.piece.pos[0]
+        py = self.piece.pos[1]
+
+        for i in range(0, l):
+            for j in range(0, l):
+                if self.piece.tetro[i][j] == 1:
+                    self.board[px+i][py+j] = 1
+        self.remove_full_lines()
+        self.piece = rand_piece()
+
+    def outside(self, dirvec): # renvoie si la piece est en dehors du tableau ou non apres avoir applique la direction en arg
+        p = copy.copy(self.piece)
+        l = len(p.tetro)
+        px = p.pos[0] + dirvec[0]
+        py = p.pos[1] + dirvec[1]
+
+        for i in range(0, l):
+            for j in range(0, l):
+                if p.tetro[i,j] == 1 and (px+i >= 10 or px+i < 0 or py+j >=  20 or py+j < 0):
+                    return True
+        return False
+
+    def overlap(self, action=None):
+        l = len(self.piece.tetro)
+        dirvec = [0, 0]
+        px = self.piece.pos[0]
+        py = self.piece.pos[1]
+
+        if action == "down":
+            py += 1
+            dirvec = [0, 1]
+
+        if action == "right":
+            px += 1
+            dirvec = [1, 0]
+
+        if action == "left":
+            px -= 1
+            dirvec = [-1, 0]
+
+        if not self.outside(dirvec):
+            for i in range(0, l):
+                for j in range(0, l):
+                    if self.piece.tetro[i][j] == 1 and self.board[px+i][py+j] == 1:
+                        return True
+        return False
+
+    def remove_full_lines(self):
+        for j in range(0, 20):
+            full = True
+            for i in range(0, 10):
+                if self.board[i, j] == 0:
+                    full = False
+
+            if full:
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                print("column ", i, " is full ")
+                self.score += 100
+                for y in range(j, 1, -1):
+                    for x in range(0, 10-1):
+                        self.board[x, y] = self.board[x, y-1]
+
+    def get_fitness(self):
+        return self.score
+
+def game_run(bot, draw_enable=False, human=False, nb_move=100):
     score = 0
-    nb_move = 0
+    move_played = 0
     finish = False
     board = np.zeros((10, 20))
-    keyboard = Controller()
     piece = rand_piece()
-    model = bot.model
+
+    bot.board = board
+    bot.piece = piece
 
     while not finish:
         if human:
@@ -395,41 +414,31 @@ def game_run(bot, draw_enable=False, human=False):
                 on_press=on_press,
                 on_release=on_release) as listener: listener.join()
         else:
-            piece, board = ia_move(model, piece, board)
-            weights = np.array(model.get_weights())
-            new_weights = []
-            for weight in weights:
-                #print("shape : ", weight.shape)
-                #print("weight ", weight)
-                if len(weight.shape) > 1:
-                    new_weights.append(np.array(weight) + np.random.rand(weight.shape[0], weight.shape[1]))
-                else:
-                    new_weights.append(weight)
+            #piece, board = ia_move(model, piece, board)
+            bot.play()
+            move_played += 1
 
-            model.set_weights(new_weights)
-            nb_move += 1
-
-        if game_over(board) or nb_move > 100:
+        if game_over(board) or move_played > nb_move:
             finish = True
             #print("GAME OVER")
-        board_plus_piece = get_board_plus_piece(board, piece)
         # print(board_plus_piece)
         if draw_enable:
+            board_plus_piece = get_board_plus_piece(board, piece)
             draw(board_plus_piece, board_draw)
             canv.update()
             time.sleep(0.05)
 
     #print("score ", score)
-    fitness = score
-    bot.fitness = fitness
 
-def croisement(b1, b2, nb_enfants):
+def croisement(args):
     """
     b1.fitness > b2.fitness
     renvoie le croisement entre les poids des 2 parents
     c'est a dire 2 enfants avec des poids qui seront un mixte des parents
     """
-
+    b1 = args[0]
+    b2 = args[1]
+    nb_enfants = args[2]
     bw1 = b1.model.get_weights()
     bw2 = b2.model.get_weights()
 
@@ -455,15 +464,15 @@ def croisement(b1, b2, nb_enfants):
             # on update les poids de la couche
             for i in range(0, nb_col):
                 for j in range(0, nb_row):
+                    v1 = lbw1[i, j]
+                    v2 = lbw2[i, j]
                     for e in range(0, len(list_enfants)):
                         p = list_p[e]
-                        list_enfants[e][k][i, j] = p * lbw1[i, j] + (1-p) * lbw2[i, j]
+                        list_enfants[e][k][i, j] = p * v1 + (1-p) * v2 + random.uniform(-2, 2)
 
-    #print("model 1: ", w1)
-
+    print("finis: ", nb_enfants)
     return list_enfants
 
-score = 0
 draw_enable = False
 
 if draw_enable:
@@ -476,43 +485,75 @@ if draw_enable:
 
 list_bot = []
 
+#sess = tensorflow.Session()
+#sess.run(tensorflow.global_variables_initializer())
+#default_graph = tensorflow.get_default_graph()
+
 # generation de la pop de depart
 print("gen bots de depart")
-for i in range(0, 10):
+for i in tqdm(range(0, 30)):
     list_bot.append(Bot())
 
-for i in range(0, 40):
+print("gen finis")
+for i in range(1, 40):
 
     print("game run, nb bots:", len(list_bot))
-    i = 0
-    # calcul des fintess
-    for bot in list_bot:
-        game_run(bot)
-        i += 1
-        print(i/len(list_bot) * 100)
+    #pool = ThreadPool(4)
+    #resuls = pool.map(game_run, list_bot)
+    #with concurrent.futures.ThreadPoolExecutor(2) as executor:
+    #    results = [x for x in executor.map(game_run, list_bot)]
+    #print("results")
+    # calcul des fitness
+    for bot in tqdm(list_bot):
+        game_run(bot, nb_move=40)
+        #print(i/len(list_bot) * 100, "%")
 
     # triage des bots par ordre de fintess
-    list_bot.sort(key=lambda x: x.fitness, reverse=True)
+    list_bot.sort(key=lambda x: x.get_fitness(), reverse=True)
     new_list_bot = []
 
     list_fitness = []
     # selection des 10 meilleurs bots
-    for i in range(0, 10):
-        new_list_bot.append(list_bot[i])
-        list_fitness.append(list_bot[i].fitness)
+    for j in range(0, 5):
+        new_list_bot.append(list_bot[j])
+        list_fitness.append(list_bot[j].get_fitness())
+
+    print("weights")
+    for layer in new_list_bot[0].model.get_weights():
+        print(layer.shape)
 
     print("resultat des boss: ", list_fitness)
+    if i > 100:
+        print("test avec plus de move")
+        root = Tk()
+        canv = Canvas(root, highlightthickness=5)
+        root.geometry('%sx%s+%s+%s' %(900, 1000, 100, 100))
+        board_draw = clean_board_draw()
+        game_run(new_list_bot[0], draw_enable=True, nb_move=150)
 
     list_bot = []
 
     print("croisement")
-    for i in range(0, len(new_list_bot) - 1):
-        b1 = new_list_bot[i]
-        b2 = new_list_bot[i+1]
+    l = len(new_list_bot)
+    list_croisement = []
+    b1 = new_list_bot[l-1]
+    for k in range(1, l):
+        #print(i/len(list_bot) * 100, "%")
 
-        list_enfants = croisement(b1, b2, (i+1) * 2)
-        for enfant in list_enfants:
-            list_bot.append(Bot(enfant))
+        b2 = new_list_bot[l- k - 1]
+        list_croisement.append((b1, b2,(k+1) * 2))
+        #list_enfants = croisement(b1, b2, (k+1) * 2)
+        #for enfant in list_enfants:
+        #    list_bot.append(Bot(enfant))
+
+    #pool = ThreadPool(4)
+    #resultats = pool.map(croisement, list_croisement)
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        resultats = executor.map(croisement, list_croisement)
+
+    for lists in resultats:
+        for model in lists:
+            list_bot.append(Bot(model))
 
 if draw_enable:
     root.mainloop()
