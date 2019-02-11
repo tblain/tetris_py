@@ -234,6 +234,7 @@ class Bot:
         self.fitness = 0
         self.score = 0
         self.penalite = 0
+        self.nb_run = 0
 
     def play(self): # joue un coup
         data = self.board.reshape((1, 200))
@@ -396,7 +397,7 @@ class Bot:
                         self.board[x, y] = self.board[x, y-1]
 
     def get_fitness(self):
-        return self.score
+        return  self.score / 4
 
 def game_run(bot, draw_enable=False, human=False, nb_move=100):
     score = 0
@@ -407,6 +408,7 @@ def game_run(bot, draw_enable=False, human=False, nb_move=100):
 
     bot.board = board
     bot.piece = piece
+    bot.nb_run += 1
 
     while not finish:
         if human:
@@ -430,27 +432,28 @@ def game_run(bot, draw_enable=False, human=False, nb_move=100):
 
     #print("score ", score)
 
-def croisement(args):
+def croisement(b1, b2, nb_enfants):
     """
     b1.fitness > b2.fitness
     renvoie le croisement entre les poids des 2 parents
     c'est a dire 2 enfants avec des poids qui seront un mixte des parents
     """
-    b1 = args[0]
-    b2 = args[1]
-    nb_enfants = args[2]
+    #b1 = args[0]
+    #b2 = args[1]
+    #nb_enfants = args[2]
     bw1 = b1.model.get_weights()
     bw2 = b2.model.get_weights()
 
     list_enfants = []
     list_p = []
 
+    count = 0
+
     for i in range(0, nb_enfants):
         # poids des deux enfants qu'on initialise avec les poids des parents
         list_enfants.append(b1.model.get_weights())
         # nombre aleatoire compris entre - 0.5 et 1.5 utiliser pour faire le croisement
         list_p.append(random.uniform(-0.5, 1.5))
-
 
     # on parcourt les couches des parents en simultanne
 
@@ -467,10 +470,13 @@ def croisement(args):
                     v1 = lbw1[i, j]
                     v2 = lbw2[i, j]
                     for e in range(0, len(list_enfants)):
+                        count += 1
                         p = list_p[e]
                         list_enfants[e][k][i, j] = p * v1 + (1-p) * v2 + random.uniform(-2, 2)
 
     print("finis: ", nb_enfants)
+    print("count: ", count)
+    #print("weights: ", list_enfants[0][2])
     return list_enfants
 
 draw_enable = False
@@ -491,12 +497,13 @@ list_bot = []
 
 # generation de la pop de depart
 print("gen bots de depart")
-for i in tqdm(range(0, 30)):
+for i in tqdm(range(0, 100)):
     list_bot.append(Bot())
 
 print("gen finis")
-for i in range(1, 40):
-
+for i in range(1, 100):
+    print("======================================================")
+    print("Generation: ", i)
     print("game run, nb bots:", len(list_bot))
     #pool = ThreadPool(4)
     #resuls = pool.map(game_run, list_bot)
@@ -505,7 +512,8 @@ for i in range(1, 40):
     #print("results")
     # calcul des fitness
     for bot in tqdm(list_bot):
-        game_run(bot, nb_move=40)
+        game_run(bot, nb_move=100)
+        game_run(bot, nb_move=100)
         #print(i/len(list_bot) * 100, "%")
 
     # triage des bots par ordre de fintess
@@ -523,7 +531,7 @@ for i in range(1, 40):
         print(layer.shape)
 
     print("resultat des boss: ", list_fitness)
-    if i > 100:
+    if i > 1:
         print("test avec plus de move")
         root = Tk()
         canv = Canvas(root, highlightthickness=5)
@@ -537,23 +545,26 @@ for i in range(1, 40):
     l = len(new_list_bot)
     list_croisement = []
     b1 = new_list_bot[l-1]
-    for k in range(1, l):
+    list_bot.append(b1)
+    for k in tqdm(range(1, l)):
         #print(i/len(list_bot) * 100, "%")
 
         b2 = new_list_bot[l- k - 1]
-        list_croisement.append((b1, b2,(k+1) * 2))
-        #list_enfants = croisement(b1, b2, (k+1) * 2)
-        #for enfant in list_enfants:
-        #    list_bot.append(Bot(enfant))
+        list_bot.append(b2)
+        #list_croisement.append((b1, b2,(k+1) * 2))
+        list_enfants = croisement(b1, b2, (k+1) * 2)
+        for enfant in list_enfants:
+            list_bot.append(Bot(enfant))
 
     #pool = ThreadPool(4)
     #resultats = pool.map(croisement, list_croisement)
-    with ThreadPoolExecutor(max_workers=12) as executor:
-        resultats = executor.map(croisement, list_croisement)
+    #with ThreadPoolExecutor(max_workers=12) as executor:
+    #       resultats = executor.map(croisement, list_croisement)
 
-    for lists in resultats:
-        for model in lists:
-            list_bot.append(Bot(model))
+    #for lists in resultats:
+    #    for model in lists:
+    #        list_bot.append(Bot(model))
+    gc.collect()
 
 if draw_enable:
     root.mainloop()
