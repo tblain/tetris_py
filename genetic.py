@@ -25,19 +25,21 @@ from utils import *
 import os
 
 def gen_NN(genes=[]):
-    inputs = Input(shape=(202,))
+    #print("gen_NN")
+    inputs = Input(shape=(12,))
     #x = Flatten()(inputs)
-    x = Dense(10, activation='relu')(inputs)
-    x = Dense(10, activation='relu')(x)
-    x = Dense(10, activation='relu')(x)
-    predictions = Dense(4, activation='softmax')(x)
+    x = Dense(30, activation='relu')(inputs)
+    x = Dense(30, activation='relu')(x)
+    x = Dense(30, activation='relu')(x)
+    predictions = Dense(11, activation='softmax')(x)
+    #print("avant creation model")
 
     model = Model(inputs=inputs, outputs=predictions)
-
+    #print("set_weights")
     if len(genes) > 0:
         model.set_weights(genes)
     model._make_predict_function()
-
+    #print("fin ")
     return model
 
 def croisement(b1, b2, nb_enfants):
@@ -49,22 +51,37 @@ def croisement(b1, b2, nb_enfants):
     #b1 = args[0]
     #b2 = args[1]
     #nb_enfants = args[2]
-    bw1 = b1.model.get_weights()
-    bw2 = b2.model.get_weights()
+    #print("debut croisement")
 
     list_enfants = []
     list_p = []
 
     count = 0
+    w1 = b1.genes
+    w2 = b2.genes
 
     for i in range(0, nb_enfants):
-        # poids des deux enfants qu'on initialise avec les poids des parents
-        list_enfants.append(b1.model.get_weights())
         # nombre aleatoire compris entre - 0.5 et 1.5 utiliser pour faire le croisement
-        list_p.append(random.uniform(-0.5, 1.5))
+        p = random.uniform(-0.5, 1.5)
 
+        # poids du nouvel enfant
+        e = np.multiply(p, w1) + np.multiply(w2, (1-p))
+
+        # mutation couche par couche
+        #print(len(e))
+        for k in range(0, len(e)):
+            if len(e[k].shape) > 1: # on skip les couches qui qui n'ont pas de poids
+                #print("avant", e[k])
+                matrice_muta = np.random.randn(e[k].shape[0], e[k].shape[1])
+                e[k] += np.multiply(matrice_muta - 0.5, 0.005)
+                #print("apres", e[k])
+                pass
+
+        list_enfants.append(e)
+    #print("fin croisement")
+    return list_enfants
     # on parcourt les couches des parents en simultanne
-
+    """
     for k in range(0, len(bw1)):
         lbw1 = bw1[k]
         lbw2 = bw2[k]
@@ -81,8 +98,7 @@ def croisement(b1, b2, nb_enfants):
                         count += 1
                         p = list_p[e]
                         list_enfants[e][k][i, j] = p * v1 + (1-p) * v2 + random.uniform(-0.5, 0.5)
-
+    """
     #print("finis: ", nb_enfants)
     #print("count: ", count)
     #print("weights: ", list_enfants[0][2])
-    return list_enfants

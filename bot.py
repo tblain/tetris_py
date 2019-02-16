@@ -24,14 +24,20 @@ from genetic import *
 
 class Bot:
     def __init__(self, genes=[]):
-        self.model = gen_NN(genes)
+        self.genes = genes
         self.fitness = 0
         self.score = 0
         self.penalite = 0
         self.nb_run = 0
+        self.lines_cleared = 0
 
-    def play(self): # joue un coup
-        data = self.board.reshape((1, 200))
+    def play(self, model): # joue un coup
+        #data = self.board#.reshape((1, 200))
+        data = np.zeros(10)
+        for i in self.board:
+            a = i.dot(2**np.arange(i.size)[::-1])
+            data[i] = a
+        data = data.reshape(1, 10)
         piece_input = np.array([self.piece.id, self.piece.rot_num]).reshape((1, 2))
         data = np.hstack((data, piece_input))
         #df = pd.DataFrame(data)
@@ -39,22 +45,18 @@ class Bot:
         #print(" rand : ", np.random.rand(200))
         #with tensorflow.Session(graph=tensorflow.Graph()) as sess:
         #    K.set_session(sess)
-        prediction = self.model.predict_on_batch(data)
+        prediction = model.predict_on_batch(data)
 
         choice = np.argmax(prediction)
         #print("prediction", prediction)
         #print("choice: ", choice)
 
-        if choice == 0:
-            self.move("left")
-        elif choice == 1:
-            self.move("right")
-        elif choice == 2:
-            self.direct_pose()
-        elif choice == 3:
+        if choice == 10:
             self.rotate(3)
-        elif choice == 4:
-            self.move("down")
+        else:
+            for i in range(0, choice):
+                self.move("right")
+            self.direct_pose()
 
     def move(self, dir): # deplace la piece dans la direction indique
         if dir == "down":
@@ -77,10 +79,28 @@ class Bot:
         px = self.piece.pos[0]
         py = self.piece.pos[1]
 
-        while not self.overlap("down") and not self.outside([0, 1]):
-            self.piece.pos[1] += 1
+        if not self.overlap() and not self.outside([0, 0]):
+            while not self.overlap("down") and not self.outside([0, 1]):
+                self.piece.pos[1] += 1
+            self.push_on()
 
-        self.push_on()
+    def calculate_board_score(self): # return the score for the current game
+        b = self.board
+        bs = 0
+
+        for i in range(0, 10):
+            full_combo = 20
+            empty_combo = 1
+            for j in range(0, 20):
+                if b[i, j] == 1:
+                    bs += full_combo
+                    full_combo = max(1, full_combo-1)
+                    empty_combo = 1
+                else:
+                    full_combo = max(1, full_combo-empty_combo)
+                    empty_combo +=1
+
+        return bs / 10
 
     def rotate(self, n=1):
         """
@@ -108,7 +128,7 @@ class Bot:
             self.rotate(n-1)
 
     def push_on(self): # met la piece definitivement dans le board
-        self.score += 10 - self.penalite
+        #self.score += 10 - self.penalite
         l = len(self.piece.tetro)
         px = self.piece.pos[0]
         py = self.piece.pos[1]
@@ -116,9 +136,10 @@ class Bot:
         for i in range(0, l):
             for j in range(0, l):
                 if self.piece.tetro[i][j] == 1:
+                    #print("p: ", self.piece.tetro, " | px: ", px+l, "| py ", py+l)
+                    #print(self.board)
                     self.board[px+i][py+j] = 1
         self.remove_full_lines()
-        self.piece = rand_piece()
 
     def outside(self, dirvec): # renvoie si la piece est en dehors du tableau ou non apres avoir applique la direction en arg
         p = copy.copy(self.piece)
@@ -165,99 +186,13 @@ class Bot:
                     full = False
 
             if full:
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                print("column ", i, " is full ")
-                self.score += 100
+                #print("ligne cleared")
+                self.lines_cleared += 1
                 for y in range(j, 1, -1):
                     for x in range(0, 10-1):
                         self.board[x, y] = self.board[x, y-1]
     def get_fitness(self):
         return self.score / self.nb_run
+
+    def get_lines_cleared(self):
+        return self.lines_cleared / self.nb_run
