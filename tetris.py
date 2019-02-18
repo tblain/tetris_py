@@ -31,11 +31,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 """
 board 10:20
 """
-
-# Pieces def
-
-
-
 def on_press(key):
     pass
 
@@ -82,18 +77,19 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
     global root
 
     if len(piece_set) == 0:
-        for i in range(0, nb_move):
+        for i in range(0, nb_move+10):
             piece_set.append(rand_piece())
 
     score = 0
     move_played = 0
     finish = False
     board = np.zeros((10, 20), dtype=int)
-    piece = rand_piece()
+    piece = piece_set[0]
 
     bot.board = board
     bot.piece = piece
     bot.nb_run += 1
+    piece_number = 1
 
     while not finish:
         if human:
@@ -101,115 +97,100 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
                 on_press=on_press,
                 on_release=on_release) as listener: listener.join()
         else:
-            #piece, board = ia_move(model, piece, board)
-            bot.piece = piece_set[move_played]
-            bot.play(model)
+            need_piece = bot.play(model, piece_set[piece_number:piece_number+8])
             move_played += 1
-            #print("move played: ", move_played)
+            if need_piece:
+                bot.piece = piece_set[piece_number]
+                piece_number += 1
 
         if game_over(board) or move_played >= nb_move:
             finish = True
             bot.score += bot.calculate_board_score()
-            #print("GAME OVER")
-        # print(board_plus_piece)
         if draw_enable:
             board_plus_piece = get_board_plus_piece(board, piece)
             draw(board_plus_piece, clean_board_draw(root))
             canv.update()
             time.sleep(0.005)
 
-    #print("score ", score)
-
-draw_enable = False
+draw_enable = True
 if draw_enable:
     root = Tk()
     canv = Canvas(root, highlightthickness=5)
     root.geometry('%sx%s+%s+%s' %(900, 1000, 100, 100))
     board_draw = clean_board_draw(root)
 
-
-
 list_bot = []
-
-#sess = tensorflow.Session()
-#sess.run(tensorflow.global_variables_initializer())
-#default_graph = tensorflow.get_default_graph()
 
 # generation de la pop de depart
 print("gen bots de depart")
-for i in tqdm(range(0, 100)):
+for i in tqdm(range(0, 200)):
     list_bot.append(Bot())
 
-nb_run = 4    # nb de run par bot
-nb_move = 250 # nb de move par run
-pieces_set = np.empty([nb_run, nb_move], dtype=Piece)
+#list_bot= croisement(list_bot[0], list_bot[1], 20)
+
+nb_run = 1    # nb de run par bot
+nb_move = 150 # nb de move par run
+pieces_set = np.empty([nb_run, nb_move+10], dtype=Piece)
 
 for i in range(0, nb_run):
-    for j in range(0, nb_move):
+    for j in range(0, nb_move+10):
         pieces_set[i][j] = rand_piece()
 
 print("gen finis")
-for i in range(1, 10000):
+for i in range(1, 4000000):
     print(" ")
     print("======================================================")
     print("Generation: ", i)
     print("game run, nb bots:", len(list_bot))
-    #pool = ThreadPool(4)
-    #resuls = pool.map(game_run, list_bot)
-    #with concurrent.futures.ThreadPoolExecutor(2) as executor:
-    #    results = [x for x in executor.map(game_run, list_bot)]
-    #print("results")
-    # calcul des fitness
 
     list_fitness_overall = []
+    list_lignes_overall = []
 
     for bot in tqdm(list_bot):
-        keras.backend.clear_session()
+        #game_run(bot, model, nb_move=nb_move, piece_set=pieces_set[0])
         model = gen_NN(bot.genes)
+        bot.genes = model.get_weights()
+        #print(model.get_weights())
         for piece_set in pieces_set:
-            game_run(bot, model, nb_move=nb_move, piece_set=piece_set)
+            #print("----------------")
+            game_run(bot, model, nb_move=nb_move, piece_set=copy.deepcopy(pieces_set[0]))
+            #print(bot.get_fitness())
         list_fitness_overall.append(bot.get_fitness())
-        #print(i/len(list_bot) * 100, "%")
+        list_lignes_overall.append(bot.get_lines_cleared())
+        keras.backend.clear_session()
 
-    # triage des bots par ordre de fintess
+    # trie des bots par ordre de fitness
     list_bot.sort(key=lambda x: (x.get_lines_cleared(), x.get_fitness()), reverse=True)
     new_list_bot = []
 
     list_fitness = []
-    # selection des 10 meilleurs bots
     print("moyenne des fitness: ", np.mean(list_fitness_overall))
-    for j in range(0, 6):
+    print("moyenne des lignes: ", np.mean(list_lignes_overall))
+    # selection des x meilleurs bots
+    for j in range(0, 10):
         new_list_bot.append(list_bot[j])
         list_fitness.append((list_bot[j].get_lines_cleared(), list_bot[j].get_fitness()))
-
-    #print("weights")
-    #for layer in new_list_bot[0].genes:
-    #    print(layer.shape)
 
     print("resultat des boss: ", list_fitness)
     if i > 1:
         model = gen_NN(new_list_bot[0].genes)
-        game_run(new_list_bot[0], model, draw_enable=draw_enable, nb_move=100)
+        game_run(new_list_bot[0], model, draw_enable=draw_enable, nb_move=100, piece_set=copy.copy(pieces_set[0]))
         print("resultat du meilleur: ", bot.get_lines_cleared(), " lignes cleared")
-        print(bot.board)
 
     list_bot = []
 
-    #print("croisement")
     l = len(new_list_bot)
     list_croisement = []
     b1 = new_list_bot[l-1]
-    #list_bot.append(b1)
+    list_bot.append(b1)
     list_enfants = []
     #list_enfants = croisement(b1, b1, 10)
+
     for k in range(1, l):
-        #print(i/len(list_bot) * 100, "%")
-        #print("debut de creation")
 
         b2 = new_list_bot[l- k - 1]
-        #list_bot.append(b2)
-        #list_croisement.append((b1, b2,(k+1) * 2))
-        for e in croisement(b1, b2, (2*k+1) * 3):
+        list_bot.append(b2)
+        for e in croisement(b1.genes, b2.genes, (2*k+1)):
             list_enfants.append(e)
         #print("ajout des bots")
         #print("fin creation")
@@ -217,15 +198,9 @@ for i in range(1, 10000):
     #print("nn creation: ", len(list_enfants))
     for enfant in list_enfants:
         list_bot.append(Bot(enfant))
-    gc.collect()
-    #pool = ThreadPool(4)
-    #resultats = pool.map(croisement, list_croisement)
-    #with ThreadPoolExecutor(max_workers=12) as executor:
-    #       resultats = executor.map(croisement, list_croisement)
 
-    #for lists in resultats:
-    #    for model in lists:
-    #        list_bot.append(Bot(model))
+    list_bot = mutate(list_bot, 10, 10)
+    gc.collect()
 
 if draw_enable and False:
     root.mainloop()

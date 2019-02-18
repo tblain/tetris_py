@@ -31,32 +31,39 @@ class Bot:
         self.nb_run = 0
         self.lines_cleared = 0
 
-    def play(self, model): # joue un coup
+    def play(self, model, next_pieces): # joue un coup
         #data = self.board#.reshape((1, 200))
-        data = np.zeros(10)
-        for i in self.board:
-            a = i.dot(2**np.arange(i.size)[::-1])
-            data[i] = a
-        data = data.reshape(1, 10)
-        piece_input = np.array([self.piece.id, self.piece.rot_num]).reshape((1, 2))
+        data = self.board
+        data = data.reshape(1, 200)
+        piece_input = np.array([self.piece.forme, self.piece.rot_num]).reshape((1, 2))
+        next_pieces_formes = np.empty(next_pieces.shape)
+        for i in range(0, len(next_pieces)):
+            next_pieces_formes[i] = next_pieces[i].forme
+
+        piece_input = np.hstack((piece_input, next_pieces_formes.reshape(1, 8)))
+
         data = np.hstack((data, piece_input))
-        #df = pd.DataFrame(data)
-        #print("dataframe : ", df)
-        #print(" rand : ", np.random.rand(200))
-        #with tensorflow.Session(graph=tensorflow.Graph()) as sess:
-        #    K.set_session(sess)
         prediction = model.predict_on_batch(data)
 
         choice = np.argmax(prediction)
         #print("prediction", prediction)
         #print("choice: ", choice)
+        if choice == 0 and False:
+            print("0000000000000000")
 
         if choice == 10:
             self.rotate(3)
+            return False
         else:
+            #print("+++++++++++++++++++++")
+            #print("choice: ", choice)
             for i in range(0, choice):
+                #print(get_board_plus_piece(self.board, self.piece))
+                #print("a ", self.piece.pos)
                 self.move("right")
+                #print(self.piece.pos)
             self.direct_pose()
+            return True
 
     def move(self, dir): # deplace la piece dans la direction indique
         if dir == "down":
@@ -66,7 +73,11 @@ class Bot:
                 self.piece.pos += np.array([0, 1])
         elif dir == "right":
             self.penalite = 0
+            #print("==============================================")
+            #print("overlap: ", self.overlap("right"))
+            #print("outside: ", self.outsformee([1, 0]))
             if not self.overlap("right") and not self.outside([1, 0]):
+                #print("movemovemovemovemovemovemove")
                 self.piece.pos += np.array([1,0])
         elif dir == "left":
             self.penalite = 0
@@ -86,21 +97,19 @@ class Bot:
 
     def calculate_board_score(self): # return the score for the current game
         b = self.board
-        bs = 0
+        board_score = 0
 
         for i in range(0, 10):
-            full_combo = 20
-            empty_combo = 1
+            full_combo = 5
             for j in range(0, 20):
                 if b[i, j] == 1:
-                    bs += full_combo
-                    full_combo = max(1, full_combo-1)
-                    empty_combo = 1
+                    board_score += full_combo + j
+                    full_combo = min(20, full_combo+5)
                 else:
-                    full_combo = max(1, full_combo-empty_combo)
-                    empty_combo +=1
+                    full_combo = 1
 
-        return bs / 10
+
+        return board_score / 10
 
     def rotate(self, n=1):
         """
