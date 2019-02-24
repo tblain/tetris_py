@@ -42,8 +42,10 @@ def get_board_plus_piece(board, piece):
 
     for i in range(0, 10):
         for j in range(0, 20):
-            if board[i, j] == 1 or get_value(piece, i, j) == 1:
+            if board[i, j] == 1:
                 board_plus_piece[i,j] = 1
+            elif get_value(piece, i, j) == 1:
+                board_plus_piece[i,j] = 2
 
     return board_plus_piece
 
@@ -52,6 +54,8 @@ def draw(board, board_draw):
         for j in range(0, 20):
             if board[i, j] == 1:
                 board_draw[i, j].configure(background="black")
+            elif board[i, j] == 2:
+                board_draw[i, j].configure(background="red")
             else:
                 board_draw[i, j].configure(background="white")
 

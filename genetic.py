@@ -9,7 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 import keras
 from keras.models import Model
-from keras.layers import Dense, Input, Flatten
+from keras.layers import Dense, Input, Flatten, Conv2D, MaxPooling2D
 import keras.backend as K
 import tensorflow
 from pynput.keyboard import Key, Controller, Listener
@@ -25,21 +25,42 @@ from utils import *
 import os
 
 def gen_NN(genes=[]):
-    #print("gen_NN")
-    inputs = Input(shape=(210,))
-    #x = Flatten()(inputs)
-    x = Dense(30, activation='relu')(inputs)
-    x = Dense(30, activation='relu')(x)
-    x = Dense(20, activation='relu')(x)
-    predictions = Dense(11, activation='softmax')(x)
-    #print("avant creation model")
+    # Inputs
+    pieces_input = Input(shape=(10,))
+    board_input = Input(shape=(10, 20, 1))
 
-    model = Model(inputs=inputs, outputs=predictions)
-    #print("set_weights")
+    # First convolution extracts 16 filters that are 3x3
+    # Convolution is followed by max-pooling layer with a 2x2 window
+    conv_l = Conv2D(16, 2, activation='relu')(board_input)
+    conv_l = MaxPooling2D(2)(conv_l)
+
+    # Second convolution extracts 32 filters that are 3x3
+    # Convolution is followed by max-pooling layer with a 2x2 window
+    conv_l = Conv2D(32, 2, activation='relu')(conv_l)
+    conv_l = MaxPooling2D(2)(conv_l)
+
+    # Third convolution extracts 64 filters that are 3x3
+    # Convolution is followed by max-pooling layer with a 2x2 window
+    #conv_l = Conv2D(64, 2, activation='relu')(conv_l)
+    #conv_l = MaxPooling2D(2)(conv_l)
+
+    conv_l = Flatten()(conv_l)
+
+    x = keras.layers.concatenate([conv_l, pieces_input])
+
+    x = Dense(60, activation='relu')(x)
+    x = Dense(60, activation='relu')(x)
+    x = Dense(60, activation='relu')(x)
+    x = Dense(60, activation='relu')(x)
+    predictions = Dense(11, activation='softmax')(x)
+
+    model = Model(inputs=[board_input, pieces_input], outputs=predictions)
+    #print(model.summary())
+
     if len(genes) > 0:
         model.set_weights(genes)
     model._make_predict_function()
-    #print("fin ")
+
     return model
 
 def croisement(w1, w2, nb_enfants):
@@ -71,7 +92,7 @@ def mutate(list_bot, nb, coeff): # proba: 1 bot sur nb sera mute
             for k in range(0, len(e)):
                 if len(e[k].shape) > 1: # on skip les couches qui qui n'ont pas de poids
                     #print("avant", e[k])
-                    matrice_muta = np.random.randn(e[k].shape[0], e[k].shape[1])
+                    matrice_muta = np.random.random(e[k].shape)
                     e[k] += np.multiply(matrice_muta - 0.5, coeff)
 
 

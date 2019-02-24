@@ -34,7 +34,7 @@ class Bot:
     def play(self, model, next_pieces): # joue un coup
         #data = self.board#.reshape((1, 200))
         data = self.board
-        data = data.reshape(1, 200)
+        data = data.reshape(1, 10, 20, 1)
         piece_input = np.array([self.piece.forme, self.piece.rot_num]).reshape((1, 2))
         next_pieces_formes = np.empty(next_pieces.shape)
         for i in range(0, len(next_pieces)):
@@ -42,8 +42,7 @@ class Bot:
 
         piece_input = np.hstack((piece_input, next_pieces_formes.reshape(1, 8)))
 
-        data = np.hstack((data, piece_input))
-        prediction = model.predict_on_batch(data)
+        prediction = model.predict_on_batch([data, piece_input])
 
         choice = np.argmax(prediction)
         #print("prediction", prediction)

@@ -18,6 +18,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 from concurrent.futures import ThreadPoolExecutor
 from tensorflow.python.client import device_lib
 from operator import itemgetter, attrgetter, methodcaller
+import matplotlib.pyplot as plt
 
 from piece import *
 from bot import *
@@ -112,7 +113,7 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
             canv.update()
             time.sleep(0.005)
 
-draw_enable = True
+draw_enable = False
 if draw_enable:
     root = Tk()
     canv = Canvas(root, highlightthickness=5)
@@ -122,21 +123,24 @@ if draw_enable:
 list_bot = []
 
 # generation de la pop de depart
-print("gen bots de depart")
-for i in tqdm(range(0, 200)):
-    list_bot.append(Bot())
 
-#list_bot= croisement(list_bot[0], list_bot[1], 20)
 
-nb_run = 1    # nb de run par bot
+nb_run = 8    # nb de run par bot
 nb_move = 150 # nb de move par run
+nb_start_pop = 200 # nb de bot dans la pop de depart
 pieces_set = np.empty([nb_run, nb_move+10], dtype=Piece)
 
+# generation de la pop de depart
+for i in range(0, nb_start_pop):
+    list_bot.append(Bot())
+
+# generation des set de pieces avec lequels les bot vont jouer
+# chaque bot joue avec set a chaque generation
 for i in range(0, nb_run):
     for j in range(0, nb_move+10):
         pieces_set[i][j] = rand_piece()
 
-print("gen finis")
+# boucle de generation
 for i in range(1, 4000000):
     print(" ")
     print("======================================================")
@@ -146,15 +150,13 @@ for i in range(1, 4000000):
     list_fitness_overall = []
     list_lignes_overall = []
 
+    # on fait jouer chaque bot
     for bot in tqdm(list_bot):
-        #game_run(bot, model, nb_move=nb_move, piece_set=pieces_set[0])
+        # creation 
         model = gen_NN(bot.genes)
         bot.genes = model.get_weights()
-        #print(model.get_weights())
         for piece_set in pieces_set:
-            #print("----------------")
-            game_run(bot, model, nb_move=nb_move, piece_set=copy.deepcopy(pieces_set[0]))
-            #print(bot.get_fitness())
+            game_run(bot, model, nb_move=nb_move, piece_set=copy.deepcopy(piece_set))
         list_fitness_overall.append(bot.get_fitness())
         list_lignes_overall.append(bot.get_lines_cleared())
         keras.backend.clear_session()
@@ -172,10 +174,13 @@ for i in range(1, 4000000):
         list_fitness.append((list_bot[j].get_lines_cleared(), list_bot[j].get_fitness()))
 
     print("resultat des boss: ", list_fitness)
+    #plt.plot([ [bot.get_lines_cleared(), bot.get_fitness() ] for bot in list_bot])
+    #plt.show()
     if i > 1:
         model = gen_NN(new_list_bot[0].genes)
         game_run(new_list_bot[0], model, draw_enable=draw_enable, nb_move=100, piece_set=copy.copy(pieces_set[0]))
-        print("resultat du meilleur: ", bot.get_lines_cleared(), " lignes cleared")
+        print("resultat du meilleur: ",new_list_bot[0].get_lines_cleared(), " lignes cleared")
+        print(new_list_bot[0].genes[0][0])
 
     list_bot = []
 
@@ -190,7 +195,7 @@ for i in range(1, 4000000):
 
         b2 = new_list_bot[l- k - 1]
         list_bot.append(b2)
-        for e in croisement(b1.genes, b2.genes, (2*k+1)):
+        for e in croisement(b1.genes, b2.genes, (k+1) * 2):
             list_enfants.append(e)
         #print("ajout des bots")
         #print("fin creation")
@@ -199,7 +204,7 @@ for i in range(1, 4000000):
     for enfant in list_enfants:
         list_bot.append(Bot(enfant))
 
-    list_bot = mutate(list_bot, 10, 10)
+    list_bot = mutate(list_bot, 10, 2)
     gc.collect()
 
 if draw_enable and False:
