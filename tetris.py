@@ -107,6 +107,7 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
         if game_over(board) or move_played >= nb_move:
             finish = True
             bot.score += bot.calculate_board_score()
+
         if draw_enable:
             board_plus_piece = get_board_plus_piece(board, piece)
             draw(board_plus_piece, clean_board_draw(root))
@@ -125,9 +126,9 @@ list_bot = []
 # generation de la pop de depart
 
 
-nb_run = 8    # nb de run par bot
+nb_run = 4    # nb de run par bot
 nb_move = 150 # nb de move par run
-nb_start_pop = 200 # nb de bot dans la pop de depart
+nb_start_pop = 20 # nb de bot dans la pop de depart
 pieces_set = np.empty([nb_run, nb_move+10], dtype=Piece)
 
 # generation de la pop de depart
@@ -185,26 +186,22 @@ for i in range(1, 4000000):
     list_bot = []
 
     l = len(new_list_bot)
-    list_croisement = []
-    b1 = new_list_bot[l-1]
-    list_bot.append(b1)
-    list_enfants = []
-    #list_enfants = croisement(b1, b1, 10)
 
+    list_enfants = []
+
+    # croisement
     for k in range(1, l):
 
+        b1 = new_list_bot[l- k]
         b2 = new_list_bot[l- k - 1]
+
+        list_bot.append(b1)
         list_bot.append(b2)
-        for e in croisement(b1.genes, b2.genes, (k+1) * 2):
-            list_enfants.append(e)
-        #print("ajout des bots")
-        #print("fin creation")
 
-    #print("nn creation: ", len(list_enfants))
-    for enfant in list_enfants:
-        list_bot.append(Bot(enfant))
+        list_croisement = croisement(b1.genes, b2.genes, (k+1) * 2)
+        for enfant in mutate_list(list_croisement, 4, 2):
+            list_bot.append(Bot(enfant))
 
-    list_bot = mutate(list_bot, 10, 2)
     gc.collect()
 
 if draw_enable and False:

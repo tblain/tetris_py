@@ -84,16 +84,15 @@ def croisement(w1, w2, nb_enfants):
         list_enfants.append(e)
     return list_enfants
 
-def mutate(list_bot, nb, coeff): # proba: 1 bot sur nb sera mute
-    list_proba = np.multiply(np.random.rand(len(list_bot)), nb)
-    for i in range(0, len(list_bot)):
-        if list_proba[i] <= 1:
-            e = list_bot[i].genes
-            for k in range(0, len(e)):
-                if len(e[k].shape) > 1: # on skip les couches qui qui n'ont pas de poids
-                    #print("avant", e[k])
-                    matrice_muta = np.random.random(e[k].shape)
-                    e[k] += np.multiply(matrice_muta - 0.5, coeff)
+def mutate(genes, nb, coeff):
+    for k in range(0, len(genes)):
+        if len(genes[k].shape) > 1 and random.randint(0, nb == 0): # on skip les couches qui qui n'ont pas de poids
+            matrice_muta = np.random.random(genes[k].shape)
+            genes[k] += np.multiply(matrice_muta - 0.5, coeff)
 
+def mutate_list(list_bot, nb, coeff):
+    l = len(list_bot)
+    for i in range(0, l):
+        mutate(list_bot[i], max(0, nb-(l-i)), coeff)
 
     return list_bot
