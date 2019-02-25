@@ -98,7 +98,7 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
                 on_press=on_press,
                 on_release=on_release) as listener: listener.join()
         else:
-            need_piece = bot.play(model, piece_set[piece_number:piece_number+8])
+            need_piece = bot.play(model, piece_set[piece_number:piece_number+2])
             move_played += 1
             if need_piece:
                 bot.piece = piece_set[piece_number]
@@ -123,12 +123,9 @@ if draw_enable:
 
 list_bot = []
 
-# generation de la pop de depart
-
-
-nb_run = 4    # nb de run par bot
-nb_move = 150 # nb de move par run
-nb_start_pop = 20 # nb de bot dans la pop de depart
+nb_run = 1    # nb de run par bot
+nb_move = 200 # nb de move par run
+nb_start_pop = 400 # nb de bot dans la pop de depart
 pieces_set = np.empty([nb_run, nb_move+10], dtype=Piece)
 
 # generation de la pop de depart
@@ -196,10 +193,11 @@ for i in range(1, 4000000):
         b2 = new_list_bot[l- k - 1]
 
         list_bot.append(b1)
-        list_bot.append(b2)
+        #list_bot.append(b2)
 
-        list_croisement = croisement(b1.genes, b2.genes, (k+1) * 2)
-        for enfant in mutate_list(list_croisement, 4, 2):
+        list_croisement = croisement(b1.genes, b2.genes, 10)
+
+        for enfant in mutate_list(list_croisement, 6, 2):
             list_bot.append(Bot(enfant))
 
     gc.collect()

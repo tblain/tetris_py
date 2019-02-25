@@ -32,21 +32,18 @@ class Bot:
         self.lines_cleared = 0
 
     def play(self, model, next_pieces): # joue un coup
-        #data = self.board#.reshape((1, 200))
         data = self.board
         data = data.reshape(1, 10, 20, 1)
-        piece_input = np.array([self.piece.forme, self.piece.rot_num]).reshape((1, 2))
-        next_pieces_formes = np.empty(next_pieces.shape)
-        for i in range(0, len(next_pieces)):
-            next_pieces_formes[i] = next_pieces[i].forme
+        piece_input = np.array([self.piece.rot_num]).reshape((1, 1))
+        piece_input = np.hstack((piece_input, self.piece.bin_forme.reshape(1, 7)))
+        next_pieces_bin_formes = np.array([piece.bin_forme for piece in next_pieces])
 
-        piece_input = np.hstack((piece_input, next_pieces_formes.reshape(1, 8)))
+        piece_input = np.hstack((piece_input, next_pieces_bin_formes.reshape(1, 7*2)))
 
         prediction = model.predict_on_batch([data, piece_input])
 
         choice = np.argmax(prediction)
-        #print("prediction", prediction)
-        #print("choice: ", choice)
+
         if choice == 0 and False:
             print("0000000000000000")
 
@@ -54,13 +51,8 @@ class Bot:
             self.rotate(3)
             return False
         else:
-            #print("+++++++++++++++++++++")
-            #print("choice: ", choice)
             for i in range(0, choice):
-                #print(get_board_plus_piece(self.board, self.piece))
-                #print("a ", self.piece.pos)
                 self.move("right")
-                #print(self.piece.pos)
             self.direct_pose()
             return True
 
@@ -71,20 +63,13 @@ class Bot:
             else:
                 self.piece.pos += np.array([0, 1])
         elif dir == "right":
-            self.penalite = 0
-            #print("==============================================")
-            #print("overlap: ", self.overlap("right"))
-            #print("outside: ", self.outsformee([1, 0]))
             if not self.overlap("right") and not self.outside([1, 0]):
-                #print("movemovemovemovemovemovemove")
                 self.piece.pos += np.array([1,0])
         elif dir == "left":
-            self.penalite = 0
             if not self.overlap("left") and not self.outside([-1, 0]):
                 self.piece.pos += np.array([-1,0])
 
     def direct_pose(self):
-        self.penalite = 9
         l = len(self.piece.tetro)
         px = self.piece.pos[0]
         py = self.piece.pos[1]
