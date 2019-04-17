@@ -1,8 +1,10 @@
 from tkinter import *
 import numpy as np
 import random
+import copy
 
 from piece import *
+
 
 def get_value(piece, x, y):
     p = piece
@@ -19,6 +21,7 @@ def get_value(piece, x, y):
     else:
         return 0
 
+
 def get_board_plus_piece(board, piece):
     board_plus_piece = np.zeros([10, 20])
 
@@ -31,6 +34,7 @@ def get_board_plus_piece(board, piece):
 
     return board_plus_piece
 
+
 def draw(board, board_draw):
     for i in range(0, 10):
         for j in range(0, 20):
@@ -40,6 +44,7 @@ def draw(board, board_draw):
                 board_draw[i, j].configure(background="red")
             else:
                 board_draw[i, j].configure(background="white")
+
 
 def clean_board_draw(root):
     board_draw = np.empty([10, 20], dtype=object)
@@ -52,9 +57,10 @@ def clean_board_draw(root):
 
     return board_draw
 
+
 def rand_piece():
     n = random.randint(0, 6)
-    #print("rand n: ", n)
+    # print("rand n: ", n)
     if n == 0:
         return PieceI()
     elif n == 1:
@@ -72,9 +78,32 @@ def rand_piece():
 
     return piece
 
+
 def game_over(board):
     for i in range(0, 10):
         if board[i, 0]:
             return True
 
     return False
+
+
+def rotate(piece, n=1):
+    # rotate the tetro matrice
+    t = copy.copy(piece.tetro)
+    l = len(t)
+    for i in range(0, l // 2):
+        for j in range(i, l - i - 1):
+            temp = t[i][j]
+            t[i, j] = t[l - 1 - j, i]
+            t[l - 1 - j, i] = t[l - 1 - i, l - 1 - j]
+            t[l - 1 - i, l - 1 - j] = t[j, l - 1 - i]
+            t[j, l - 1 - i] = temp
+
+    piece.rot_num += 1
+    if piece.rot_num == 3:
+        piece.rot_num = 0
+
+    piece.tetro = t
+
+    if n > 1:
+        rotate(n - 1)
