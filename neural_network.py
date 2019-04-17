@@ -14,12 +14,10 @@ class Model_regression:
             self.weights.append(np.random.rand(nb_output, nb_neurones))
             self.weights.append(np.zeros(nb_neurones))
             nb_output = nb_neurones
-        # print(self.weights)
 
     def preactiv(self, x):
         res = x
         for i in range(0, len(self.weights), 2):
-            # print(self.weights[i].shape)
             res = self.activ(res @ self.weights[i] + self.weights[i+1])
 
         return res
@@ -74,41 +72,38 @@ class Model_regression:
             bx = x.iloc[batch_size * i: batch_size * (i + 1) - 1]
             by = y.iloc[batch_size * i: batch_size * (i + 1) - 1]
 
-            batch_gradient = default_batch_gradient  # store the gradient calculated on the whole batch
+            # store the gradient calculated on the whole batch
+            batch_gradient = default_batch_gradient
 
-
-            for k in range(len(bx)): # iterate over the batch
-                res_l = [bx.iloc[k]] # store the result after each layer
+            for k in range(len(bx)):  # iterate over the batch
+                res_l = [bx.iloc[k]]  # store the result after each layer
                 res = bx.iloc[k]
-                for h in range(0, len(self.weights), 2): # calculate the result for the current features
-                    pre_a = res @ self.weights[h] + self.weights[h+1]
-                    res_l.append(pre_a) # and store the intermediate result before activation
+
+                # calculate the result for the current features
+                for h in range(0, len(self.weights), 2):
+                    pre_a = res @ self.weights[h] + self.weights[h + 1]
+                    # store the intermediate result before activation
+                    res_l.append(pre_a)
                     res = self.activ(pre_a)
 
                 loss = self.loss(by.iloc[k], res)
 
                 # update of the last neurone
-                act_deriv = 1 #self.activation_deriv(post_a)
-                #print("-----------")
-                #print(res_l[-2].shape)
-                #print(batch_gradient[-2].shape)
-                #print((loss * act_deriv * res_l[-2]) + batch_gradient[-2])
+                act_deriv = 1  # self.activation_deriv(post_a)
                 batch_gradient[-2] += loss * act_deriv * np.expand_dims(res_l[-2], 1)
                 batch_gradient[-1] += loss * act_deriv
 
-                for h in range(0, len(self.weights), -2): # backpropagation
-                    loss = self.activ(res_l[h/2]) * np.dot(self.weights[h+2], loss)
-                    batch_gradient[h]   = res_l[h/2] * loss
-                    batch_gradient[h+1] = res_l[h/2]
+                for h in range(0, len(self.weights), -2):  # backpropagation
+                    loss = self.activ(res_l[h / 2]) * np.dot(self.weights[h + 2], loss)
+                    batch_gradient[h]   = res_l[h / 2] * loss
+                    batch_gradient[h + 1] = res_l[h / 2]
 
             for k in range(0, len(self.weights), 2):
-                #print(batch_gradient[k])
-                self.weights[k] -= learning_rate * (1 / batch_size) * batch_gradient[k]
-                self.weights[k+1] -= learning_rate * (1 / batch_size) * batch_gradient[k+1]
+                a = learning_rate * (1 / batch_size)
+                self.weights[k]     -= a * batch_gradient[k]
+                self.weights[k + 1] -= a * batch_gradient[k + 1]
 
-            #print(self.weights)
-
-            if x.shape[0] < batch_size*(i+1):
+            if x.shape[0] < batch_size * (i + 1):
                 p = np.random.permutation(len(x))
                 x = x.iloc[p]
                 y = y.iloc[p]
