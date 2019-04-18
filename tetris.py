@@ -39,6 +39,8 @@ def on_release(key):
         return False
 
 
+
+
 def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=[]):
     """
     bot: le bot a faire jouer
@@ -53,6 +55,10 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
     global board_draw
     global canv
     global root
+
+    fitness = 0
+    score = 0
+    lines_cleared = 0
 
     if len(piece_set) == 0:
         for i in range(0, nb_move+10):
@@ -89,3 +95,4 @@ def game_run(bot, model, draw_enable=False, human=False, nb_move=100, piece_set=
             draw(board_plus_piece, clean_board_draw(root))
             canv.update()
             time.sleep(0.005)
+
