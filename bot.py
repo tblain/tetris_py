@@ -22,7 +22,7 @@ class Bot:
         piece_input = np.hstack((piece_input, self.piece.bin_forme.reshape(1, 7)))
         next_pieces_bin_formes = np.array([piece.bin_forme for piece in next_pieces])
 
-        piece_input = np.hstack((piece_input, next_pieces_bin_formes.reshape(1, 7*2)))
+        piece_input = np.hstack((piece_input, next_pieces_bin_formes.reshape(1, 7 * 2)))
 
         prediction = model.predict_on_batch([data, piece_input])
 
@@ -124,7 +124,9 @@ class Bot:
 
         for i in range(0, lenght):
             for j in range(0, lenght):
-                if p.tetro[i, j] == 1 and (px + i >= 10 or px + i < 0 or py + j >=  20 or py + j < 0 ):
+                if p.tetro[i, j] == 1 and (
+                    px + i >= 10 or px + i < 0 or py + j >= 20 or py + j < 0
+                ):
                     return True
         return False
 

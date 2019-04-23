@@ -21,7 +21,7 @@ class NN:
         # print(x.dtype)
         # print(self.weights[0].dtype)
         for i in range(0, len(self.weights), 2):
-            res = self.activ(res @ self.weights[i] + self.weights[i+1])
+            res = self.activ(res @ self.weights[i] + self.weights[i + 1])
 
         return res
 
@@ -39,7 +39,7 @@ class NN:
         return res
 
     def loss(self, res, y):  # 1 example
-        return (res - y)
+        return res - y
 
     def d_activation(self, res):
         if res > 0:
@@ -88,7 +88,7 @@ class NN:
             gradient[h] = res_l[h / 2] * loss
             gradient[h + 1] = res_l[h / 2]
             print(gradient[h])
-            print(gradient[h+1])
+            print(gradient[h + 1])
 
         for k in range(0, len(self.weights), 2):
             # print(gradient[k])
@@ -110,8 +110,8 @@ class NN:
 
         for etape in range(step):
             i += 1
-            bx = x.iloc[batch_size * i: batch_size * (i + 1) - 1]
-            by = y.iloc[batch_size * i: batch_size * (i + 1) - 1]
+            bx = x.iloc[batch_size * i : batch_size * (i + 1) - 1]
+            by = y.iloc[batch_size * i : batch_size * (i + 1) - 1]
 
             # store the gradient calculated on the whole batch
             batch_gradient = default_batch_gradient
@@ -155,8 +155,16 @@ class NN:
                 print("=====================")
                 predic = self.predict_on_dataset(x_val)
                 predic_train = self.predict_on_dataset(x)
-                print("Epoch: ", epo, "| loss val: ", ((predic - y_val)**2).mean() / 2, " | loss train ", ((predic_train - y)**2).mean() / 2)
+                print(
+                    "Epoch: ",
+                    epo,
+                    "| loss val: ",
+                    ((predic - y_val) ** 2).mean() / 2,
+                    " | loss train ",
+                    ((predic_train - y) ** 2).mean() / 2,
+                )
                 epo += 1
+
 
 """
 dataset = pd.read_csv("./winequality-red.csv")

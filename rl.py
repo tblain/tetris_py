@@ -21,7 +21,7 @@ def eval_board(state, depth):
                 penal = 0
                 max_height = 19 - j
             else:
-                points = max(1, points-5)
+                points = max(1, points - 5)
                 penal += 5
 
         board_max_heights[i] = max_height
@@ -45,12 +45,12 @@ def NN_predic_eval_state(model, state, train=False, target=0):
     # print(data.shape)
     predic = model.predict(data) * 1000
     if train:
-        model.fit_on_one(data, target/1000, 0.00005)
+        model.fit_on_one(data, target / 1000, 0.00005)
         # print(model.weights)
         for w in model.weights:
             # print(w)
             pass
-        print(predic, " / ", target/1000)
+        print(predic, " / ", target / 1000)
 
     return predic
 
@@ -85,32 +85,17 @@ def NN_search_eval_state(model, state, pieces, train=False, NN_play=True):
 
             for c in range(0, 10):
                 e_piece = copy.deepcopy(piece)
-                # e_state = copy.deepcopy(state)
                 e_state = State(state.board[:], state.score, state.cleared_lines)
-                # print("================")
-                # print("================")
-                # print("================")
-                # print("================")
-                # print("================")
-                # print("================")
-                # print("================")
-                # print("================")
-                # print("================")
-                # state.affichage()
-                # print("===")
-                # print("===")
-                # print("===")
                 e_state.pose(c, e_piece)
-                # state.affichage()
 
                 # on stoque les scores
                 if train:
-                    score_algo[10*r + c] = eval_board(e_state, 2)
+                    score_algo[10 * r + c] = eval_board(e_state, 2)
                     # print(e_piece.pos)
                     # score_NN[10*r + c] = NN_predic_eval_state(model, e_state, train, score_algo[10*r + c])
                     # TODO : model.fit + faire un fit stochiastic dans le NN
                 else:
-                    score_NN[10*r + c] = NN_predic_eval_state(model, e_state)
+                    score_NN[10 * r + c] = NN_predic_eval_state(model, e_state)
 
         # on retourne la valeur max
         if NN_play:
@@ -130,7 +115,9 @@ def NN_search_eval_state(model, state, pieces, train=False, NN_play=True):
                 # e_state = copy.deepcopy(state)
                 e_state = State(state.board[:], state.score, state.cleared_lines)
                 e_state.pose(c, piece)
-                score_NN[10*r + c] = NN_search_eval_state(model, e_state, pieces, train, NN_play)
+                score_NN[10 * r + c] = NN_search_eval_state(
+                    model, e_state, pieces, train, NN_play
+                )
         # print(score_NN)
 
         return np.max(score_NN)
@@ -139,6 +126,8 @@ def NN_search_eval_state(model, state, pieces, train=False, NN_play=True):
 def NN_choose_move(model, state, pieces, train=False, NN_play=True):
     score = np.zeros(30)
     piece = copy.deepcopy(pieces[0])
+
+    NN_predic_eval_state()
 
     # on parcourt toutes les possibilites de jeux et on les evalue
     for r in tqdm(range(0, 3)):
@@ -151,7 +140,9 @@ def NN_choose_move(model, state, pieces, train=False, NN_play=True):
             e_state.pose(c, e_piece)
 
             # on stoque les scores
-            score[10*r + c] = NN_search_eval_state(model, e_state, pieces[1:], train, NN_play)
+            score[10 * r + c] = NN_search_eval_state(
+                model, e_state, pieces[1:], train, NN_play
+            )
 
     choice = np.argmax(score)
     return choice // 10, choice % 10
@@ -185,7 +176,9 @@ def game_run(model, draw_enable=False, nb_move=1000, piece_set=[]):
         # print(state.board)
         state.affichage()
         # e_state = copy.deepcopy(state)
-        r, col = NN_choose_move(model, state, piece_set[piece_number:piece_number+2], True, False)
+        r, col = NN_choose_move(
+            model, state, piece_set[piece_number : piece_number + 2], True, False
+        )
         print("r: ", r, " / col: ", col)
 
         # print(piece_set[piece_number].rot_num)

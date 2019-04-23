@@ -3,7 +3,7 @@ from rl import game_run
 from neural_network import NN
 import pandas as pd
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # cali_dataframe = pd.read_csv("./california_housing_train.csv")
     # x_train = cali_dataframe.drop("median_house_value", 1)
     # y_train = cali_dataframe.median_house_value / 1000
