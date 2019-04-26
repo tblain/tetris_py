@@ -13,11 +13,11 @@ def get_value(piece, x, y):
     px = p.pos[0]
     py = p.pos[1]
 
-    #print("     px: %s | py: %s | x: %s | y:%s | l:%s" % (px, py, x, y, l))
+    # print("     px: %s | py: %s | x: %s | y:%s | l:%s" % (px, py, x, y, l))
 
-    if px <= x <= px + l -1 and py <= y <= py + l -1:
-#        print(t[x-px][y-py])
-        return t[x-px,y-py]
+    if px <= x <= px + l - 1 and py <= y <= py + l - 1:
+        #        print(t[x-px][y-py])
+        return t[x - px, y - py]
     else:
         return 0
 
@@ -28,9 +28,9 @@ def get_board_plus_piece(board, piece):
     for i in range(0, 10):
         for j in range(0, 20):
             if board[i, j] == 1:
-                board_plus_piece[i,j] = 1
+                board_plus_piece[i, j] = 1
             elif get_value(piece, i, j) == 1:
-                board_plus_piece[i,j] = 2
+                board_plus_piece[i, j] = 2
 
     return board_plus_piece
 
@@ -53,7 +53,7 @@ def clean_board_draw(root):
         for j in range(0, 20):
             frame = Frame(root, width=40, height=40, background="white")
             frame.grid(row=j, column=i)
-            board_draw[i,j] = frame
+            board_draw[i, j] = frame
 
     return board_draw
 
@@ -81,8 +81,9 @@ def rand_piece():
 
 def game_over(board):
     for i in range(0, 10):
-        if board[i, 0]:
-            return True
+        for j in range(0, 4):
+            if board[i, j]:
+                return True
 
     return False
 

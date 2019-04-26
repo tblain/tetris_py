@@ -30,7 +30,7 @@ def eval_board(state, depth):
     for h in board_max_heights:
         board_score -= biggest_height - h
 
-    return board_score + state.cleared_lines * 10000
+    return board_score + state.cleared_lines * 1000
 
 
 def compare_board():
@@ -126,8 +126,6 @@ def NN_search_eval_state(model, state, pieces, train=False, NN_play=True):
 def NN_choose_move(model, state, pieces, train=False, NN_play=True):
     score = np.zeros(30)
     piece = copy.deepcopy(pieces[0])
-
-    NN_predic_eval_state()
 
     # on parcourt toutes les possibilites de jeux et on les evalue
     for r in tqdm(range(0, 3)):
